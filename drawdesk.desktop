@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=drawdesk
+Comment=Excalidraw viewer/editor
+Exec=drawdesk %f
+Icon=drawdesk
+Terminal=false
+Type=Application
+Categories=Graphics;
+MimeType=application/x-excalidraw;
