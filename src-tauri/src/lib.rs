@@ -16,6 +16,8 @@ fn get_cli_image(state: tauri::State<'_, Mutex<CliArgs>>) -> Option<String> {
 }
 
 fn resolve_path(arg: &str) -> Option<String> {
+    // Strip file:// URI prefix if present
+    let arg = arg.strip_prefix("file://").unwrap_or(arg);
     let path = std::path::PathBuf::from(arg);
 
     let abs = if path.is_absolute() {
