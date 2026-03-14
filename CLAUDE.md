@@ -10,9 +10,12 @@ Lightweight desktop Excalidraw viewer/editor built with Tauri v2 + Vite + React 
 
 ## Key Files
 
-- `src/App.tsx` — All app logic: file parsing, save/load, UI, keyboard shortcuts
-- `src/App.css` — Styling (uses Excalidraw's CSS variables for toolbar buttons)
-- `src-tauri/src/lib.rs` — CLI arg handling, Tauri plugin setup
+- `src/App.tsx` — Main React component: Excalidraw wrapper, file I/O, keyboard shortcuts, image paste
+- `src/excalidraw-md.ts` — Parsing/serialization of `.excalidraw.md` format (Obsidian compatibility)
+- `src/image.ts` — Image utilities: data URL conversion, MIME type detection
+- `src/theme.ts` — System theme detection and Excalidraw theme appState helpers
+- `src/App.css` — Styling (Excalidraw CSS variable overrides, dark mode canvas filter fix)
+- `src-tauri/src/lib.rs` — CLI arg handling (`--image` flag), Tauri plugin setup
 - `src-tauri/tauri.conf.json` — Window config, dev server URL (port 48205), permissions
 - `src-tauri/capabilities/default.json` — Tauri v2 permission grants (fs, dialog)
 - `install.sh` — Builds release and copies binary to ~/.local/bin/
@@ -40,6 +43,8 @@ npm run tauri build                         # Release build
 drawdesk file.excalidraw.md    # Open existing file
 drawdesk new.excalidraw.md     # Create new (file doesn't need to exist)
 drawdesk                       # Welcome screen with New/Open buttons
+drawdesk --image screenshot.png              # Open with image on canvas
+drawdesk -i screenshot.png out.excalidraw.md # Open image + set save target
 ```
 
 ## Keyboard Shortcuts
@@ -47,11 +52,18 @@ drawdesk                       # Welcome screen with New/Open buttons
 - `Ctrl+O` — Open file
 - `Ctrl+N` — New drawing
 - `Ctrl+S` — Save (immediate; also auto-saves 5s after changes)
+- `Ctrl+V` — Paste image from clipboard (supports file paths in clipboard)
+
+## Important
+
+- After making changes, always run `./install.sh` to rebuild and reinstall — the app launcher runs the installed binary, not the dev server
+- `tsc --noEmit` and `tsc -b` may give different results; `npm run build` uses `tsc -b` which is stricter
 
 ## Conventions
 
 - Tauri v2 APIs (not v1) — imports from `@tauri-apps/api`, `@tauri-apps/plugin-*`
 - All deps use loose version ranges for easy updates (`npm update` + `cargo update`)
-- Dark theme forced by default
+- Theme follows system preference (dark/light)
+- Dark mode: Excalidraw's CSS canvas filter (`invert(93%) hue-rotate(180deg)`) is disabled via `App.css` to preserve image colors. Instead, dark background + light stroke colors are set directly in appState (see `theme.ts`).
 - Custom buttons use Excalidraw's `renderTopRightUI` prop and its CSS variables
 - Port 48205 for dev server (avoid conflicts)

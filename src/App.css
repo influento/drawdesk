@@ -9,6 +9,13 @@
   height: 100%;
 }
 
+/* Kill Excalidraw's dark-mode canvas color inversion so images keep original colors.
+   Excalidraw uses theme="dark" for dark UI but we disable the canvas filter. */
+.excalidraw.theme--dark canvas {
+  filter: none !important;
+}
+
+
 .toolbar-inline {
   display: flex;
   gap: 6px;
