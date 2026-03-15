@@ -52,7 +52,8 @@ drawdesk -i screenshot.png out.excalidraw.md # Open image + set save target
 - `Ctrl+O` — Open file
 - `Ctrl+N` — New drawing
 - `Ctrl+S` — Save (immediate; also auto-saves 5s after changes)
-- `Ctrl+V` — Paste image from clipboard (supports file paths in clipboard)
+- `Ctrl+C` — Copy entire canvas as PNG to clipboard (overrides Excalidraw's default JSON copy)
+- `Ctrl+V` — Paste image from clipboard (supports file paths and `file://` URIs)
 
 ## Important
 

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Excalidraw } from "@excalidraw/excalidraw";
+import { Excalidraw, exportToClipboard } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -7,7 +7,7 @@ import { readTextFile, writeTextFile, readFile, exists } from "@tauri-apps/plugi
 import { invoke } from "@tauri-apps/api/core";
 import { homeDir, join } from "@tauri-apps/api/path";
 import { type ExcalidrawData, parseExcalidrawMd, buildExcalidrawMd } from "./excalidraw-md";
-import { IMAGE_EXTENSIONS, imageToDataURL, mimeTypeForPath } from "./image";
+import { imageToDataURL, mimeTypeForPath } from "./image";
 import { getSystemTheme, themeAppState } from "./theme";
 import "./App.css";
 
@@ -212,24 +212,42 @@ function App() {
     await writeTextFile(targetPath, content);
   }, [filePath, isMdFormat, wasCompressed, originalMdContent]);
 
+  // Copy all as PNG to clipboard
+  const copyAsPng = useCallback(async () => {
+    const api = excalidrawApiRef.current;
+    if (!api) return;
+    const elements = api.getSceneElements();
+    if (!elements.length) return;
+    await exportToClipboard({
+      elements,
+      appState: { ...api.getAppState(), exportBackground: true } as any,
+      files: api.getFiles(),
+      type: "png",
+    });
+  }, []);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); saveFile(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "o") { e.preventDefault(); openFile(); }
       if ((e.ctrlKey || e.metaKey) && e.key === "n") { e.preventDefault(); newDrawing(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "c") { e.preventDefault(); copyAsPng(); }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [saveFile, openFile, newDrawing]);
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
+  }, [saveFile, openFile, newDrawing, copyAsPng]);
 
   // Intercept paste: if clipboard text is an image file path, insert it
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       if (!excalidrawData) return;
 
-      const text = e.clipboardData?.getData("text/plain")?.trim();
+      let text = e.clipboardData?.getData("text/plain")?.trim();
       if (!text) return;
+
+      // Strip file:// URI prefix (common from screenshot tools)
+      if (text.startsWith("file://")) text = text.slice(7);
 
       const mimeType = mimeTypeForPath(text);
       if (!mimeType) return;
