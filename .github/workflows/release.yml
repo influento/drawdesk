@@ -22,7 +22,7 @@ jobs:
 
       - name: Setup Rust
         run: |
-          rustup-init -y --default-toolchain stable
+          rustup default stable
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
 
       - uses: actions/checkout@v4
