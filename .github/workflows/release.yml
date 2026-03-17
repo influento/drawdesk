@@ -29,7 +29,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run tauri build -- --bundles none
+        run: npm run tauri build -- --no-bundle
 
       - name: Package
         run: |
