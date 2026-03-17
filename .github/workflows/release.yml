@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed \
+            base-devel git nodejs npm rustup \
+            webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg \
+            pkgconf openssl
+
+      - name: Setup Rust
+        run: |
+          rustup-init -y --default-toolchain stable
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
+      - uses: actions/checkout@v4
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build
+        run: |
+          . "$HOME/.cargo/env"
+          npm run tauri build
+
+      - name: Package
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          mkdir -p "drawdesk-${tag}"
+          cp src-tauri/target/release/drawdesk "drawdesk-${tag}/"
+          cp drawdesk.desktop "drawdesk-${tag}/"
+          tar czf "drawdesk-${tag}-x86_64.tar.gz" "drawdesk-${tag}"
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: drawdesk-*.tar.gz
+          generate_release_notes: true

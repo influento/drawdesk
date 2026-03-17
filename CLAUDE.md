@@ -55,6 +55,15 @@ drawdesk -i screenshot.png out.excalidraw.md # Open image + set save target
 - `Ctrl+C` — Copy entire canvas as PNG to clipboard (overrides Excalidraw's default JSON copy)
 - `Ctrl+V` — Paste image from clipboard (supports file paths and `file://` URIs)
 
+## Releasing
+
+GitHub Actions workflow (`.github/workflows/release.yml`) builds in an Arch Linux container and creates a GitHub release with a tarball containing the binary + `.desktop` file.
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
 ## Important
 
 - After making changes, always run `./install.sh` to rebuild and reinstall — the app launcher runs the installed binary, not the dev server
