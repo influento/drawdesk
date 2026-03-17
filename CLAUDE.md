@@ -69,6 +69,14 @@ git push origin v0.1.0
 - After making changes, always run `./install.sh` to rebuild and reinstall — the app launcher runs the installed binary, not the dev server
 - `tsc --noEmit` and `tsc -b` may give different results; `npm run build` uses `tsc -b` which is stricter
 
+## Git
+
+- Do not add `Co-Authored-By` trailers to git commits
+- Before every commit/push, audit the staged diff for sensitive information leaks:
+  usernames, passwords, API keys, tokens, private IPs, email addresses, or any
+  data that should not appear in a public repository. Flag any findings to the user
+  before proceeding
+
 ## Conventions
 
 - Tauri v2 APIs (not v1) — imports from `@tauri-apps/api`, `@tauri-apps/plugin-*`
