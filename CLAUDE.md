@@ -77,6 +77,15 @@ git push origin v0.1.0
   data that should not appear in a public repository. Flag any findings to the user
   before proceeding
 
+## Known Issues
+
+- **WebKitGTK crashes during drawing** — WebKitWebProcess segfaults (SIGSEGV/SIGABRT) due to race conditions in multi-threaded Skia GPU painting on AMD radeonsi + Mesa. Current mitigation: `WEBKIT_SKIA_GPU_PAINTING_THREADS=1` set in `lib.rs` at startup. If crashes persist, try in order:
+  1. `WEBKIT_SKIA_GPU_PAINTING_THREADS=0` (single-thread GPU painting)
+  2. `mesa_glthread=false` (disable Mesa's GL threading, can combine with above)
+  3. `WEBKIT_DISABLE_COMPOSITING_MODE=1` (disable HW compositing entirely, moderate perf hit)
+  4. `WEBKIT_DISABLE_DMABUF_RENDERER=1` (last resort, significant perf hit)
+  5. Upgrade WebKitGTK — 2.52.0 fixes ThreadedCompositor race conditions that may help
+
 ## Conventions
 
 - Tauri v2 APIs (not v1) — imports from `@tauri-apps/api`, `@tauri-apps/plugin-*`

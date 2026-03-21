@@ -39,6 +39,11 @@ fn resolve_path(arg: &str) -> Option<String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Limit Skia GPU painting to 1 thread to avoid WebKitGTK compositor race conditions
+    // (SIGSEGV/SIGABRT in WebKitWebProcess on radeonsi). Keeps GPU acceleration active.
+    if std::env::var("WEBKIT_SKIA_GPU_PAINTING_THREADS").is_err() {
+        std::env::set_var("WEBKIT_SKIA_GPU_PAINTING_THREADS", "1");
+    }
     let args: Vec<String> = std::env::args().skip(1).collect();
 
     let mut file_path: Option<String> = None;
