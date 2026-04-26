@@ -243,11 +243,18 @@ function App() {
     const handlePaste = async (e: ClipboardEvent) => {
       if (!excalidrawData) return;
 
-      let text = e.clipboardData?.getData("text/plain")?.trim();
+      // text/uri-list (RFC 2483): CRLF-separated URIs, lines starting with # are comments
+      const uriList = e.clipboardData?.getData("text/uri-list");
+      const firstUri = uriList
+        ?.split(/\r?\n/)
+        .map((l) => l.trim())
+        .find((l) => l && !l.startsWith("#"));
+      let text = firstUri || e.clipboardData?.getData("text/plain")?.trim();
       if (!text) return;
 
       // Strip file:// URI prefix (common from screenshot tools)
       if (text.startsWith("file://")) text = text.slice(7);
+      try { text = decodeURIComponent(text); } catch { /* not URI-encoded */ }
 
       const mimeType = mimeTypeForPath(text);
       if (!mimeType) return;
