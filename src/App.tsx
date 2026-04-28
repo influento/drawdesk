@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Excalidraw, exportToClipboard } from "@excalidraw/excalidraw";
+import { Excalidraw, exportToBlob } from "@excalidraw/excalidraw";
 import "@excalidraw/excalidraw/index.css";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { open, save } from "@tauri-apps/plugin-dialog";
@@ -212,38 +212,59 @@ function App() {
     await writeTextFile(targetPath, content);
   }, [filePath, isMdFormat, wasCompressed, originalMdContent]);
 
-  // Copy all as PNG to clipboard
-  const copyAsPng = useCallback(async () => {
+  // Ctrl+Shift+C: export selection (or whole canvas) as PNG and hand it to
+  // sway's wl-copy + delayed-rm pipeline (see $mod+P in user's sway config).
+  const copySelectionAsPng = useCallback(async () => {
     const api = excalidrawApiRef.current;
     if (!api) return;
-    const elements = api.getSceneElements();
-    if (!elements.length) return;
-    await exportToClipboard({
+    const all = api.getSceneElements();
+    if (!all.length) return;
+
+    const selectedIds = api.getAppState().selectedElementIds || {};
+    const selected = all.filter((el: any) => selectedIds[el.id]);
+    const elements = selected.length ? selected : all;
+
+    const blob = await exportToBlob({
       elements,
       appState: { ...api.getAppState(), exportBackground: true } as any,
       files: api.getFiles(),
-      type: "png",
+      mimeType: "image/png",
     });
+    const bytes = Array.from(new Uint8Array(await blob.arrayBuffer()));
+    await invoke("copy_png_via_sway", { bytes });
   }, []);
 
   // Keyboard shortcuts
+  const shiftHeldRef = useRef(false);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") { e.preventDefault(); saveFile(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "o") { e.preventDefault(); openFile(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "n") { e.preventDefault(); newDrawing(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === "c") { e.preventDefault(); copyAsPng(); }
+      shiftHeldRef.current = e.shiftKey;
+      const mod = e.ctrlKey || e.metaKey;
+      if (mod && !e.shiftKey && e.key === "s") { e.preventDefault(); saveFile(); }
+      if (mod && !e.shiftKey && e.key === "o") { e.preventDefault(); openFile(); }
+      if (mod && !e.shiftKey && e.key === "n") { e.preventDefault(); newDrawing(); }
+      if (mod && e.shiftKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        copySelectionAsPng();
+      }
     };
+    const handleKeyUp = (e: KeyboardEvent) => { shiftHeldRef.current = e.shiftKey; };
     window.addEventListener("keydown", handleKeyDown, { capture: true });
-    return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
-  }, [saveFile, openFile, newDrawing, copyAsPng]);
+    window.addEventListener("keyup", handleKeyUp, { capture: true });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+      window.removeEventListener("keyup", handleKeyUp, { capture: true });
+    };
+  }, [saveFile, openFile, newDrawing, copySelectionAsPng]);
 
-  // Intercept paste: if clipboard text is an image file path, insert it
+  // Ctrl+Shift+V: paste image-file-path from clipboard onto canvas.
+  // Plain Ctrl+V is left to Excalidraw so element copy/paste works normally.
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       if (!excalidrawData) return;
+      if (!shiftHeldRef.current) return;
 
-      // text/uri-list (RFC 2483): CRLF-separated URIs, lines starting with # are comments
       const uriList = e.clipboardData?.getData("text/uri-list");
       const firstUri = uriList
         ?.split(/\r?\n/)
@@ -252,7 +273,6 @@ function App() {
       let text = firstUri || e.clipboardData?.getData("text/plain")?.trim();
       if (!text) return;
 
-      // Strip file:// URI prefix (common from screenshot tools)
       if (text.startsWith("file://")) text = text.slice(7);
       try { text = decodeURIComponent(text); } catch { /* not URI-encoded */ }
 
@@ -270,7 +290,6 @@ function App() {
       const uint8 = await readFile(resolvedPath);
       await insertImageToCanvas(uint8, mimeType);
     };
-
     document.addEventListener("paste", handlePaste, { capture: true });
     return () => document.removeEventListener("paste", handlePaste, { capture: true });
   }, [excalidrawData, insertImageToCanvas]);
