@@ -9,10 +9,17 @@
   height: 100%;
 }
 
-/* Kill Excalidraw's dark-mode canvas color inversion so images keep original colors.
-   Excalidraw uses theme="dark" for dark UI but we disable the canvas filter. */
-.excalidraw.theme--dark canvas {
-  filter: none !important;
+/* Disable Excalidraw's dark-mode color-inversion globally.
+   Excalidraw's dark theme works by storing light-palette colors and applying
+   a CSS `filter: invert(93%) hue-rotate(180deg)` (--theme-filter) on the
+   canvas, color swatches, library thumbnails, and the in-progress text
+   overlay. We turn the filter off everywhere so what you pick is what you
+   get: pick white → draw white, the swatch you see matches the stroke,
+   mid-edit text matches committed text, and pasted images keep true colors.
+   Combined with `currentItemStrokeColor: "#ffffff"` + dark
+   `viewBackgroundColor` in theme.ts, this gives a coherent dark experience. */
+.excalidraw.theme--dark {
+  --theme-filter: none;
 }
 
 
