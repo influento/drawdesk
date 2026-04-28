@@ -8,17 +8,38 @@ Lightweight desktop Excalidraw viewer/editor built with Tauri v2 + Vite + React 
 - **Backend**: Minimal Rust/Tauri shell — just file I/O and CLI arg passing (`src-tauri/`)
 - **No server**: Tauri bundles the frontend into a single binary using the system webview (WebKitGTK on Linux)
 
+## Features
+
+Every feature, where it lives. Source is the source of truth — entries here are pointers, not duplications.
+
+| Feature | Source |
+|---|---|
+| Open/save `.excalidraw` and `.excalidraw.md` | `src/App.tsx:38` (`loadFile`), `src/App.tsx:190` (`saveFile`), `src/excalidraw-md.ts` |
+| Auto-save 5s after change | `src/App.tsx:314` (debounced `saveFile`) |
+| Welcome screen (New / Open) | `src/App.tsx:322` |
+| File-path indicator (bottom of canvas) | `src/App.tsx:362`, `.file-path-indicator` in `src/App.css` |
+| Dismissible error banner | `src/App.tsx:330,361`, `.error-banner` in `src/App.css` |
+| Custom toolbar (New / Open buttons via `renderTopRightUI`) | `src/App.tsx:347` |
+| System-theme-following dark/light | `src/theme.ts`, `src/App.tsx:31` (live `matchMedia`) |
+| Dark-mode WYSIWYG colors (`--theme-filter: none` globally) | `src/App.css` (`.excalidraw.theme--dark`), `src/theme.ts` |
+| Custom 5 stroke top picks (white/blue/grape/teal/red) | `scripts/patch-excalidraw-picks.mjs` (postinstall patch — Excalidraw bakes picks into the bundle, no prop exists) |
+| Image paste from clipboard text path (Ctrl+Shift+V) | `src/App.tsx:264` (paste handler), `src/App.tsx:79` (`insertImageToCanvas`) |
+| Copy selection (or canvas) as PNG → sway pipeline (Ctrl+Shift+C) | `src/App.tsx:217` (`copySelectionAsPng`), `src-tauri/src/lib.rs` (`copy_png_via_sway`) |
+| CLI: open file (positional) / `--image` flag | `src-tauri/src/lib.rs` (arg parsing), `src/App.tsx:134` (init) |
+| WebKitGTK crash mitigation | `src-tauri/src/lib.rs` (`WEBKIT_SKIA_GPU_PAINTING_THREADS=1`) |
+
 ## Key Files
 
-- `src/App.tsx` — Main React component: Excalidraw wrapper, file I/O, keyboard shortcuts, image paste
-- `src/excalidraw-md.ts` — Parsing/serialization of `.excalidraw.md` format (Obsidian compatibility)
-- `src/image.ts` — Image utilities: data URL conversion, MIME type detection
-- `src/theme.ts` — System theme detection and Excalidraw theme appState helpers
-- `src/App.css` — Styling (Excalidraw CSS variable overrides, dark mode canvas filter fix)
-- `src-tauri/src/lib.rs` — CLI arg handling (`--image` flag), Tauri plugin setup
-- `src-tauri/tauri.conf.json` — Window config, dev server URL (port 48205), permissions
+- `src/App.tsx` — Excalidraw wrapper, file I/O, keyboard shortcuts, image paste
+- `src/excalidraw-md.ts` — `.excalidraw.md` (Obsidian) parse/serialize; handles `json` and `compressed-json` (LZ-string) blocks, preserves original compression
+- `src/image.ts` — Image utils: data URL conversion, MIME type detection
+- `src/theme.ts` — System theme detection + dark-mode appState defaults
+- `src/App.css` — Styling, dark-mode `--theme-filter` override
+- `src-tauri/src/lib.rs` — CLI arg parsing, `copy_png_via_sway` command, Tauri plugin setup
+- `src-tauri/tauri.conf.json` — Window config, dev server port (48205)
 - `src-tauri/capabilities/default.json` — Tauri v2 permission grants (fs, dialog)
-- `install.sh` — Builds release and copies binary to ~/.local/bin/
+- `install.sh` — Build release + copy binary to `~/.local/bin/`
+- `scripts/patch-excalidraw-picks.mjs` — `postinstall` patch for Excalidraw's hardcoded stroke top picks. Matches by shape (regex), so it survives content-hash filename changes; will fail loudly if upstream restructures the constants.
 
 ## File Formats
 
@@ -52,8 +73,9 @@ drawdesk -i screenshot.png out.excalidraw.md # Open image + set save target
 - `Ctrl+O` — Open file
 - `Ctrl+N` — New drawing
 - `Ctrl+S` — Save (immediate; also auto-saves 5s after changes)
-- `Ctrl+C` — Copy entire canvas as PNG to clipboard (overrides Excalidraw's default JSON copy)
-- `Ctrl+V` — Paste image from clipboard (supports file paths and `file://` URIs)
+- `Ctrl+C` / `Ctrl+V` — Native Excalidraw copy/paste (selected elements)
+- `Ctrl+Shift+C` — Export selection (or whole canvas if nothing selected) as PNG; hands it to sway's `wl-copy + delayed-rm` pipeline (see `copy_png_via_sway` in `lib.rs`). Requires `wl-copy` on PATH.
+- `Ctrl+Shift+V` — Paste image from clipboard text (file paths and `file://` URIs)
 
 ## Releasing
 
@@ -90,7 +112,4 @@ git push origin v0.1.0
 
 - Tauri v2 APIs (not v1) — imports from `@tauri-apps/api`, `@tauri-apps/plugin-*`
 - All deps use loose version ranges for easy updates (`npm update` + `cargo update`)
-- Theme follows system preference (dark/light)
-- Dark mode: Excalidraw's CSS canvas filter (`invert(93%) hue-rotate(180deg)`) is disabled via `App.css` to preserve image colors. Instead, dark background + light stroke colors are set directly in appState (see `theme.ts`).
-- Custom buttons use Excalidraw's `renderTopRightUI` prop and its CSS variables
 - Port 48205 for dev server (avoid conflicts)
